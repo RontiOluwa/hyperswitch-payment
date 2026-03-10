@@ -1,0 +1,147 @@
+version: '3.9'
+
+services:
+
+  # ─── API Gateway ─────────────────────────────────────
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile.dev
+    container_name: platform-api-gateway
+    restart: unless-stopped
+    ports:
+      - "${API_GATEWAY_PORT}:3000"
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      AUTH0_DOMAIN: ${AUTH0_DOMAIN}
+      AUTH0_AUDIENCE: ${AUTH0_AUDIENCE}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      PAYMENT_SERVICE_URL: http://payment-service:3001
+      WEBHOOK_SERVICE_URL: http://webhook-service:3002
+      ORDER_SERVICE_URL: http://order-service:3003
+      NOTIFICATION_SERVICE_URL: http://notification-service:3004
+      INTERNAL_SERVICE_SECRET: ${INTERNAL_SERVICE_SECRET}
+    volumes:
+      - ./services/api-gateway:/app
+      - /app/node_modules
+    networks:
+      - platform-network
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ─── Payment Service ─────────────────────────────────
+  payment-service:
+    build:
+      context: ./services/payment-service
+      dockerfile: Dockerfile.dev
+    container_name: platform-payment-service
+    restart: unless-stopped
+    ports:
+      - "${PAYMENT_SERVICE_PORT}:3001"
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      INTERNAL_SERVICE_SECRET: ${INTERNAL_SERVICE_SECRET}
+    volumes:
+      - ./services/payment-service:/app
+      - /app/node_modules
+    networks:
+      - platform-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ─── Webhook Service ─────────────────────────────────
+  webhook-service:
+    build:
+      context: ./services/webhook-service
+      dockerfile: Dockerfile.dev
+    container_name: platform-webhook-service
+    restart: unless-stopped
+    ports:
+      - "${WEBHOOK_SERVICE_PORT}:3002"
+    environment:
+      NODE_ENV: development
+      PORT: 3002
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      INTERNAL_SERVICE_SECRET: ${INTERNAL_SERVICE_SECRET}
+      PAYMENT_SERVICE_URL: http://payment-service:3001
+      ORDER_SERVICE_URL: http://order-service:3003
+      NOTIFICATION_SERVICE_URL: http://notification-service:3004
+    volumes:
+      - ./services/webhook-service:/app
+      - /app/node_modules
+    networks:
+      - platform-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ─── Order Service ───────────────────────────────────
+  order-service:
+    build:
+      context: ./services/order-service
+      dockerfile: Dockerfile.dev
+    container_name: platform-order-service
+    restart: unless-stopped
+    ports:
+      - "${ORDER_SERVICE_PORT}:3003"
+    environment:
+      NODE_ENV: development
+      PORT: 3003
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      INTERNAL_SERVICE_SECRET: ${INTERNAL_SERVICE_SECRET}
+    volumes:
+      - ./services/order-service:/app
+      - /app/node_modules
+    networks:
+      - platform-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ─── Notification Service ────────────────────────────
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile.dev
+    container_name: platform-notification-service
+    restart: unless-stopped
+    ports:
+      - "${NOTIFICATION_SERVICE_PORT}:3004"
+    environment:
+      NODE_ENV: development
+      PORT: 3004
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      INTERNAL_SERVICE_SECRET: ${INTERNAL_SERVICE_SECRET}
+    volumes:
+      - ./services/notification-service:/app
+      - /app/node_modules
+    networks:
+      - platform-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy

@@ -2,6 +2,7 @@ cat > .gitignore << 'EOF'
 # Dependencies
 node_modules/
 .pnp
+data.md
 .pnp.js
 
 # Build outputs
