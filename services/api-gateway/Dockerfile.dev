@@ -1,0 +1,22 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy workspace manifests first for better layer caching
+COPY package*.json ./
+COPY packages/shared-types/package.json ./packages/shared-types/
+COPY packages/shared-utils/package.json ./packages/shared-utils/
+COPY services/api-gateway/package.json ./services/api-gateway/
+
+RUN npm install
+
+# Copy source
+COPY packages/shared-types ./packages/shared-types
+COPY packages/shared-utils ./packages/shared-utils
+COPY services/api-gateway ./services/api-gateway
+
+WORKDIR /app/services/api-gateway
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev"]

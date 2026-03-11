@@ -1,0 +1,13 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+      "rootDir": "./src",
+      "outDir": "./dist",
+      "paths": {
+        "@platform/shared-types": ["../../packages/shared-types/src"],
+        "@platform/shared-utils": ["../../packages/shared-utils/src"],
+        "@platform/database": ["../../packages/database/src"]
+      }
+    },
+    "include": ["src/**/*"]
+  }
