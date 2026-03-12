@@ -1,0 +1,19 @@
+{
+  "name": "medusa-service",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "medusa build",
+    "dev": "medusa develop",
+    "start": "medusa start",
+    "seed": "medusa exec ./src/scripts/seed.ts"
+  },
+  "dependencies": {
+    "@medusajs/medusa": "^2.0.0",
+    "@medusajs/dashboard": "^2.0.0",
+    "@medusajs/modules-sdk": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0"
+  }
+}

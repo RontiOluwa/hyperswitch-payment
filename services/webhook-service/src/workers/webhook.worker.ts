@@ -91,9 +91,13 @@ const processWebhookJob = async (job: Job<WebhookJobData>) => {
     logger.info({ eventId }, 'Payment service notified');
 
     // Step 2 — Notify Medusa (non-blocking — failure does not fail the job)
-    await notifyMedusa(eventType, hyperswitchPaymentId, rawPayload);
-    logger.info({ eventId }, 'Medusa notified');
 
+    try {
+      await notifyMedusa(eventType, hyperswitchPaymentId, rawPayload);
+      logger.info({ eventId }, 'Medusa notified');
+    } catch {
+      logger.warn({ eventId }, 'Medusa not reachable — skipping until Step 7');
+    }
     // Step 3 — Mark webhook log as processed
     await prisma.webhookLog.update({
       where: { id: webhookLogId },
@@ -113,7 +117,7 @@ const processWebhookJob = async (job: Job<WebhookJobData>) => {
         error: err instanceof Error ? err.message : 'Unknown error',
         retryCount: { increment: 1 },
       },
-    }).catch(() => {}); // Do not throw here — let BullMQ handle the retry
+    }).catch(() => { }); // Do not throw here — let BullMQ handle the retry
 
     throw err; // Re-throw so BullMQ knows the job failed and should retry
   }

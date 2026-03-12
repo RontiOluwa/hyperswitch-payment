@@ -1,0 +1,18 @@
+FROM node:20-alpine
+
+# Required for Medusa build tools
+RUN apk add --no-cache python3 make g++
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+
+RUN npm run build
+
+EXPOSE 9000
+EXPOSE 9001
+
+CMD ["npm", "run", "start"]

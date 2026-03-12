@@ -6,6 +6,7 @@ networks:
 
 volumes:
   postgres-data:
+  medusa-postgres-data:
   redis-data:
   pgadmin-data:
 
@@ -29,6 +30,27 @@ services:
       - platform-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Medusa ──────────────────────────────────────
+  medusa-postgres:
+    image: postgres:16-alpine
+    container_name: platform-medusa-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: medusa_user
+      POSTGRES_PASSWORD: medusa_password_dev
+      POSTGRES_DB: medusa_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - medusa-postgres-data:/var/lib/postgresql/data
+    networks:
+      - platform-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medusa_user -d medusa_db"]
       interval: 10s
       timeout: 5s
       retries: 5
