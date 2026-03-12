@@ -10,9 +10,16 @@
   "dependencies": {
     "@medusajs/medusa": "^2.0.0",
     "@medusajs/dashboard": "^2.0.0",
-    "@medusajs/modules-sdk": "^2.0.0"
+    "@medusajs/modules-sdk": "^2.0.0",
+    "@medusajs/cache-redis": "^2.0.0",
+    "@medusajs/event-bus-redis": "^2.0.0",
+    "@medusajs/workflow-engine-redis": "^2.0.0",
+    "dotenv": "^16.4.0",
+    "jsonwebtoken": "^9.0.0",
+    "ts-node": "^10.9.2"
   },
   "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.0",
     "@types/node": "^20.0.0",
     "typescript": "^5.4.0"
   }

@@ -1,6 +1,5 @@
 FROM node:20-alpine
 
-# Required for Medusa build tools
 RUN apk add --no-cache python3 make g++
 
 WORKDIR /app
@@ -8,7 +7,13 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 
-COPY . .
+COPY tsconfig.json ./
+COPY medusa-config.ts ./
+
+# Compile the config file first so Medusa can find it
+RUN npx tsc medusa-config.ts --outDir . --module commonjs --esModuleInterop true --skipLibCheck true
+
+COPY src ./src
 
 RUN npm run build
 

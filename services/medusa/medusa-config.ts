@@ -1,55 +1,31 @@
-import { defineConfig, loadEnv } from '@medusajs/utils';
+const { defineConfig } = require('@medusajs/utils');
+const { Modules } = require('@medusajs/utils');
 
-loadEnv(process.env.NODE_ENV || 'development', process.cwd());
+require('dotenv').config();
 
-export default defineConfig({
+module.exports = defineConfig({
   projectConfig: {
-    // Medusa's own database — separate from our custom services
     databaseUrl: process.env.MEDUSA_DATABASE_URL,
     redisUrl: process.env.MEDUSA_REDIS_URL,
     http: {
-      adminCors: process.env.ADMIN_CORS ?? 'http://localhost:7001',
-      authCors: process.env.AUTH_CORS ?? 'http://localhost:7001',
+      adminCors: process.env.ADMIN_CORS ?? 'http://localhost:9001',
+      authCors: process.env.AUTH_CORS ?? 'http://localhost:9001',
       storeCors: process.env.STORE_CORS ?? 'http://localhost:8000',
       jwtSecret: process.env.JWT_SECRET ?? 'supersecret',
       cookieSecret: process.env.COOKIE_SECRET ?? 'supersecret',
     },
   },
 
-  modules: [
-    // ── Order Module ──────────────────────────────────────────────────────────
-    {
-      resolve: '@medusajs/order',
-      options: {},
-    },
+  modules: {
+    // ── Feature modules ───────────────────────────────────────────────────────
+    [Modules.ORDER]: true,
+    [Modules.CUSTOMER]: true,
+    [Modules.PRODUCT]: true,
+    [Modules.INVENTORY]: true,
+    [Modules.CART]: true,
 
-    // ── Customer Module ───────────────────────────────────────────────────────
-    {
-      resolve: '@medusajs/customer',
-      options: {},
-    },
-
-    // ── Product Module ────────────────────────────────────────────────────────
-    {
-      resolve: '@medusajs/product',
-      options: {},
-    },
-
-    // ── Inventory Module ──────────────────────────────────────────────────────
-    {
-      resolve: '@medusajs/inventory',
-      options: {},
-    },
-
-    // ── Cart Module ───────────────────────────────────────────────────────────
-    {
-      resolve: '@medusajs/cart',
-      options: {},
-    },
-
-    // ── Payment Module ────────────────────────────────────────────────────────
-    // This is where our custom Hyperswitch provider plugs in
-    {
+    // ── Payment module with Hyperswitch provider ───────────────────────────────
+    [Modules.PAYMENT]: {
       resolve: '@medusajs/payment',
       options: {
         providers: [
@@ -66,42 +42,22 @@ export default defineConfig({
       },
     },
 
-    // ── Notification Module ───────────────────────────────────────────────────
-    {
-      resolve: '@medusajs/notification',
-      options: {
-        providers: [
-          {
-            resolve: '@medusajs/notification-sendgrid',
-            id: 'sendgrid',
-            options: {
-              channels: ['email'],
-              api_key: process.env.SENDGRID_API_KEY,
-              from: process.env.SENDGRID_FROM_EMAIL,
-            },
-          },
-        ],
-      },
-    },
-
-    // ── Cache Module (Redis) ──────────────────────────────────────────────────
-    {
+    // ── Infrastructure modules ────────────────────────────────────────────────
+    [Modules.CACHE]: {
       resolve: '@medusajs/cache-redis',
       options: {
         redisUrl: process.env.MEDUSA_REDIS_URL,
       },
     },
 
-    // ── Event Bus (Redis) ─────────────────────────────────────────────────────
-    {
+    [Modules.EVENT_BUS]: {
       resolve: '@medusajs/event-bus-redis',
       options: {
         redisUrl: process.env.MEDUSA_REDIS_URL,
       },
     },
 
-    // ── Workflow Engine (Redis) ───────────────────────────────────────────────
-    {
+    [Modules.WORKFLOW_ENGINE]: {
       resolve: '@medusajs/workflow-engine-redis',
       options: {
         redis: {
@@ -109,5 +65,5 @@ export default defineConfig({
         },
       },
     },
-  ],
+  },
 });
