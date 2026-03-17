@@ -1,0 +1,184 @@
+version: '3.9'
+
+services:
+
+  # ─── API Gateway ─────────────────────────────────────
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile.dev
+    container_name: platform-api-gateway
+    restart: unless-stopped
+    ports:
+      - "${API_GATEWAY_PORT}:3000"
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      AUTH0_DOMAIN: ${AUTH0_DOMAIN}
+      AUTH0_AUDIENCE: ${AUTH0_AUDIENCE}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      PAYMENT_SERVICE_URL: http://payment-service:3001
+      WEBHOOK_SERVICE_URL: http://webhook-service:3002
+      ORDER_SERVICE_URL: http://order-service:3003
+      NOTIFICATION_SERVICE_URL: http://notification-service:3004
+      INTERNAL_SERVICE_SECRET: ${INTERNAL_SERVICE_SECRET}
+    volumes:
+      - ./services/api-gateway:/app
+      - /app/node_modules
+    networks:
+      - platform-network
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ─── Medusa Service ─────────────────────────────────
+  medusa:
+    build:
+      context: ./services/medusa
+      dockerfile: Dockerfile.dev
+    container_name: platform-medusa
+    restart: unless-stopped
+    ports:
+      - "9000:9000"   # Medusa API
+      - "9001:9001"   # Medusa Admin dashboard
+    environment:
+      NODE_ENV: development
+      MEDUSA_DATABASE_URL: postgresql://medusa_user:medusa_password_dev@medusa-postgres:5432/medusa_db
+      MEDUSA_REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_SECRET: ${INTERNAL_SERVICE_SECRET}
+      COOKIE_SECRET: ${INTERNAL_SERVICE_SECRET}
+      ADMIN_CORS: http://localhost:9001
+      AUTH_CORS: http://localhost:9001
+      STORE_CORS: http://localhost:8000
+      HYPERSWITCH_API_KEY: ${HYPERSWITCH_API_KEY}
+      HYPERSWITCH_BASE_URL: ${HYPERSWITCH_BASE_URL}
+      HYPERSWITCH_WEBHOOK_SECRET: ${HYPERSWITCH_WEBHOOK_SECRET}
+      PAYMENT_SERVICE_URL: http://payment-service:3001
+      INTERNAL_SERVICE_SECRET: ${INTERNAL_SERVICE_SECRET}
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-optional}
+      SENDGRID_FROM_EMAIL: ${SENDGRID_FROM_EMAIL:-noreply@platform.com}
+    volumes:
+      - ./services/medusa:/app
+      - /app/node_modules
+    networks:
+      - platform-network
+    depends_on:
+      medusa-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ─── Payment Service ─────────────────────────────────
+  payment-service:
+    build:
+      context: ./services/payment-service
+      dockerfile: Dockerfile.dev
+    container_name: platform-payment-service
+    restart: unless-stopped
+    ports:
+      - "${PAYMENT_SERVICE_PORT}:3001"
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      INTERNAL_SERVICE_SECRET: ${INTERNAL_SERVICE_SECRET}
+    volumes:
+      - ./services/payment-service:/app
+      - /app/node_modules
+    networks:
+      - platform-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ─── Webhook Service ─────────────────────────────────
+  webhook-service:
+    build:
+      context: ./services/webhook-service
+      dockerfile: Dockerfile.dev
+    container_name: platform-webhook-service
+    restart: unless-stopped
+    ports:
+      - "${WEBHOOK_SERVICE_PORT}:3002"
+    environment:
+      NODE_ENV: development
+      PORT: 3002
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      INTERNAL_SERVICE_SECRET: ${INTERNAL_SERVICE_SECRET}
+      PAYMENT_SERVICE_URL: http://payment-service:3001
+      ORDER_SERVICE_URL: http://order-service:3003
+      NOTIFICATION_SERVICE_URL: http://notification-service:3004
+    volumes:
+      - ./services/webhook-service:/app
+      - /app/node_modules
+    networks:
+      - platform-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ─── Order Service ───────────────────────────────────
+  order-service:
+    build:
+      context: ./services/order-service
+      dockerfile: Dockerfile.dev
+    container_name: platform-order-service
+    restart: unless-stopped
+    ports:
+      - "${ORDER_SERVICE_PORT}:3003"
+    environment:
+      NODE_ENV: development
+      PORT: 3003
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      INTERNAL_SERVICE_SECRET: ${INTERNAL_SERVICE_SECRET}
+    volumes:
+      - ./services/order-service:/app
+      - /app/node_modules
+    networks:
+      - platform-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ─── Notification Service ────────────────────────────
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile.dev
+    container_name: platform-notification-service
+    restart: unless-stopped
+    ports:
+      - "${NOTIFICATION_SERVICE_PORT}:3004"
+    environment:
+      NODE_ENV: development
+      PORT: 3004
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      INTERNAL_SERVICE_SECRET: ${INTERNAL_SERVICE_SECRET}
+    volumes:
+      - ./services/notification-service:/app
+      - /app/node_modules
+    networks:
+      - platform-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy

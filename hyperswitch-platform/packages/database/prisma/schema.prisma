@@ -1,0 +1,268 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PAYMENT SCHEMA
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PaymentIntent {
+  id                    String        @id @default(cuid())
+  hyperswitchPaymentId  String        @unique
+  orderId               String
+  customerId            String
+  amount                Int           // stored in smallest currency unit (cents)
+  currency              String
+  status                PaymentStatus @default(requires_payment_method)
+  clientSecret          String
+  paymentMethod         String?
+  pspReference          String?
+  pspName               String?
+  idempotencyKey        String        @unique
+  returnUrl             String?
+  metadata              Json?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  // Relations
+  events    PaymentEvent[]
+  refunds   Refund[]
+
+  @@index([orderId])
+  @@index([customerId])
+  @@index([status])
+  @@index([idempotencyKey])
+  @@map("payment_intents")
+}
+
+// Append-only audit log — never update, only insert
+model PaymentEvent {
+  id               String           @id @default(cuid())
+  paymentIntentId  String
+  eventType        PaymentEventType
+  pspReference     String?
+  pspName          String?
+  amount           Int?
+  currency         String?
+  status           PaymentStatus?
+  rawData          Json?
+  createdAt        DateTime         @default(now())
+
+  // Relations
+  paymentIntent    PaymentIntent    @relation(fields: [paymentIntentId], references: [id])
+
+  @@index([paymentIntentId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("payment_events")
+}
+
+model Refund {
+  id                   String       @id @default(cuid())
+  hyperswitchRefundId  String       @unique
+  paymentIntentId      String
+  amount               Int
+  currency             String
+  status               RefundStatus @default(pending)
+  reason               String?
+  metadata             Json?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  // Relations
+  paymentIntent        PaymentIntent @relation(fields: [paymentIntentId], references: [id])
+
+  @@index([paymentIntentId])
+  @@index([status])
+  @@map("refunds")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WEBHOOK SCHEMA
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Every inbound webhook is persisted here BEFORE processing
+// This is the safety net — events can always be replayed from this table
+model WebhookLog {
+  id           String           @id @default(cuid())
+  eventId      String           @unique  // Hyperswitch event ID — used for dedup
+  eventType    String
+  source       String           @default("hyperswitch")
+  rawPayload   Json
+  processed    Boolean          @default(false)
+  processedAt  DateTime?
+  error        String?
+  retryCount   Int              @default(0)
+  createdAt    DateTime         @default(now())
+
+  @@index([eventId])
+  @@index([processed])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("webhook_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ORDER SCHEMA
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Order {
+  id               String      @id @default(cuid())
+  customerId       String
+  status           OrderStatus @default(pending)
+  totalAmount      Int
+  currency         String
+  lineItems        Json        // snapshot of items at purchase time
+  shippingAddress  Json
+  billingAddress   Json?
+  paymentIntentId  String?     @unique
+  metadata         Json?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  // Relations
+  events           OrderEvent[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([paymentIntentId])
+  @@map("orders")
+}
+
+// Append-only audit log for order state transitions
+model OrderEvent {
+  id              String      @id @default(cuid())
+  orderId         String
+  previousStatus  OrderStatus
+  newStatus       OrderStatus
+  triggeredBy     String      // webhook event ID or 'system' or 'admin'
+  metadata        Json?
+  createdAt       DateTime    @default(now())
+
+  // Relations
+  order           Order       @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([createdAt])
+  @@map("order_events")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NOTIFICATION SCHEMA
+// ─────────────────────────────────────────────────────────────────────────────
+
+model NotificationLog {
+  id               String             @id @default(cuid())
+  customerId       String
+  orderId          String
+  paymentIntentId  String
+  type             NotificationType
+  channel          NotificationChannel
+  recipient        String             // email address or slack channel
+  status           NotificationStatus @default(pending)
+  sentAt           DateTime?
+  error            String?
+  metadata         Json?
+  createdAt        DateTime           @default(now())
+
+  @@index([customerId])
+  @@index([orderId])
+  @@index([type])
+  @@index([status])
+  @@map("notification_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MERCHANT API KEYS SCHEMA
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ApiKey {
+  id           String    @id @default(cuid())
+  merchantId   String
+  name         String
+  hashedKey    String    @unique  // SHA-256 hash — raw key never stored
+  prefix       String             // first 8 chars for identification (e.g. hs_live_ab12)
+  permissions  String[]
+  isActive     Boolean   @default(true)
+  lastUsedAt   DateTime?
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([merchantId])
+  @@index([hashedKey])
+  @@map("api_keys")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum PaymentStatus {
+  requires_payment_method
+  requires_confirmation
+  requires_action
+  processing
+  succeeded
+  failed
+  cancelled
+}
+
+enum PaymentEventType {
+  intent_created
+  intent_confirmed
+  payment_processing
+  payment_succeeded
+  payment_failed
+  payment_cancelled
+  action_required
+  refund_initiated
+  refund_succeeded
+  refund_failed
+}
+
+enum RefundStatus {
+  pending
+  succeeded
+  failed
+}
+
+enum OrderStatus {
+  pending
+  payment_pending
+  payment_failed
+  paid
+  processing
+  shipped
+  delivered
+  cancelled
+  refunded
+  partially_refunded
+}
+
+enum NotificationType {
+  payment_success
+  payment_failed
+  refund_initiated
+  refund_success
+  action_required
+  dispute_created
+}
+
+enum NotificationChannel {
+  email
+  slack
+  sms
+}
+
+enum NotificationStatus {
+  pending
+  sent
+  failed
+  suppressed
+}

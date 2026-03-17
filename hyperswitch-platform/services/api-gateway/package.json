@@ -1,0 +1,31 @@
+{
+  "name": "api-gateway",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/index.ts",
+    "build": "tsc",
+    "start": "node -r tsconfig-paths/register dist/index.js",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@platform/shared-types": "*",
+    "@platform/shared-utils": "*",
+    "@fastify/cors": "^9.0.0",
+    "@fastify/helmet": "^11.0.0",
+    "@fastify/rate-limit": "^9.0.0",
+    "@fastify/http-proxy": "^9.0.0",
+    "fastify": "^4.26.0",
+    "ioredis": "^5.3.0",
+    "jwks-rsa": "^3.1.0",
+    "jsonwebtoken": "^9.0.0",
+    "zod": "^3.22.0",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.0",
+    "@types/node": "^20.0.0",
+    "ts-node-dev": "^2.0.0",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.4.0"
+  }
+}
