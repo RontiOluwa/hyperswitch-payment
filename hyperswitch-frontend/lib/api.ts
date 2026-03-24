@@ -1,6 +1,5 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
-// Base fetch wrapper — attaches auth token and handles errors
 const apiFetch = async <T>(
   path: string,
   token: string,
@@ -24,17 +23,15 @@ const apiFetch = async <T>(
   return data;
 };
 
-// ─── Payment API ──────────────────────────────────────────────────────────────
-
 export const createPaymentIntent = async (
   token: string,
   payload: {
     orderId: string;
     amount: number;
     currency: string;
-    paymentMethod?: string;
   }
 ) => {
+  // No customerId here — Gateway extracts it from JWT
   return apiFetch<{
     success: boolean;
     data: {
@@ -63,8 +60,6 @@ export const getPaymentIntent = async (token: string, id: string) => {
     };
   }>(`/api/v1/payments/${id}`, token);
 };
-
-// ─── Orders API ───────────────────────────────────────────────────────────────
 
 export const listOrders = async (token: string) => {
   return apiFetch<{
